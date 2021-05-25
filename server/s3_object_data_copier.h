@@ -88,6 +88,11 @@ class S3ObjectDataCopier {
             std::function<void(void)> on_failure);
 
   const std::string& get_s3_error() { return s3_error; }
+  // Modifies input 'buffer' of the expected size
+  // Used when we need specific portion of 'buffer', discarding the remianing
+  // data.
+  void get_buffers(S3BufferSequence& buffer, size_t total_size,
+                   size_t expected_size);
 
   friend class S3ObjectDataCopierTest;
 

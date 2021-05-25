@@ -79,7 +79,7 @@ def main():
     elif args.command == 'cleanup':
       from cleanupcmd import CleanupCmd
       logger.info('cleanup started.')
-      CleanupCmd(args.config).process(args.delete_deployment_log)
+      CleanupCmd(args.config).process(True)
       logger.info('cleanup successful.')
     elif args.command == 'config':
       from configcmd import ConfigCmd

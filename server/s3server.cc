@@ -75,13 +75,13 @@ evhtp_ssl_ctx_t *g_ssl_auth_ctx = NULL;
 evbase_t *global_evbase_handle;
 extern struct m0_realm motr_uber_realm;
 // index will have bucket and account information
-struct m0_uint128 global_bucket_list_index_oid;
+struct s3_motr_idx_layout global_bucket_list_index_layout;
 // index will have bucket metada information
-struct m0_uint128 bucket_metadata_list_index_oid;
+struct s3_motr_idx_layout bucket_metadata_list_index_layout;
 // index will have s3server instance information
-struct m0_uint128 global_instance_list_index;
+struct s3_motr_idx_layout global_instance_list_index_layout;
 // objects listed in this index are probable delete candidates and not absolute.
-struct m0_uint128 global_probable_dead_object_list_index_oid;
+struct s3_motr_idx_layout global_probable_dead_object_list_index_layout;
 
 int global_shutdown_in_progress;
 pthread_t global_tid_indexop;
@@ -532,7 +532,7 @@ void fini_auth_ssl() {
 }
 
 // This index will be holding the ids for the bucket
-int create_global_index(struct m0_uint128 &root_index_oid,
+int create_global_index(struct s3_motr_idx_layout &idx_lo,
                         const uint64_t &u_lo_index_offset) {
   int rc = 0;
 
@@ -541,12 +541,12 @@ int create_global_index(struct m0_uint128 &root_index_oid,
 
   // reserving an oid for root index -- M0_ID_APP + offset
   const auto m0_timeout = m0_time_from_now(motr_op_wait_period, 0);
-  init_s3_index_oid(root_index_oid, u_lo_index_offset);
+  init_s3_index_oid(idx_lo.oid, u_lo_index_offset);
 
   struct m0_idx idx;
   memset(&idx, 0, sizeof idx);
 
-  m0_idx_init(&idx, &motr_uber_realm, &root_index_oid);
+  m0_idx_init(&idx, &motr_uber_realm, &idx_lo.oid);
 
   for (; --n_retry > 0; ::sleep(1)) {  // suspend current thread for 1 second
     struct m0_op *cr_op = nullptr;
@@ -594,15 +594,18 @@ int create_global_index(struct m0_uint128 &root_index_oid,
   if (rc) {
     s3_iem(LOG_ALERT, S3_IEM_MOTR_CONN_FAIL, S3_IEM_MOTR_CONN_FAIL_STR,
            S3_IEM_MOTR_CONN_FAIL_JSON);
+  } else {
+    idx_lo.pver = idx.in_attr.idx_pver;
+    idx_lo.layout_type = idx.in_attr.idx_layout_type;
   }
   return rc;
 }
-
+/*
 int create_global_replica_index(struct m0_uint128 &root_index_oid,
                                 const uint64_t &u_lo_index_offset) {
   return create_global_index(root_index_oid, u_lo_index_offset);
 }
-
+*/
 void log_resource_limits() {
   int rc;
   struct rlimit rlimit;
@@ -951,9 +954,9 @@ int main(int argc, char **argv) {
     s3_log(S3_LOG_FATAL, "", "S3 ADDB Init failed!\n");
   }
 
-  // global_bucket_list_index_oid - will hold bucket name as key, its owner
+  // global_bucket_list_index_layout - will hold bucket name as key, its owner
   // account information and region as value.
-  rc = create_global_index(global_bucket_list_index_oid,
+  rc = create_global_index(global_bucket_list_index_layout,
                            GLOBAL_BUCKET_LIST_INDEX_OID_U_LO);
   if (rc < 0) {
     s3daemon.delete_pidfile();
@@ -963,9 +966,9 @@ int main(int argc, char **argv) {
     s3_log(S3_LOG_FATAL, "", "Failed to create a global bucket KVS index\n");
   }
 
-  // bucket_metadata_list_index_oid - will hold accountid/bucket_name as key,
+  // bucket_metadata_list_index_layout - will hold accountid/bucket_name as key,
   // bucket medata as value.
-  rc = create_global_index(bucket_metadata_list_index_oid,
+  rc = create_global_index(bucket_metadata_list_index_layout,
                            BUCKET_METADATA_LIST_INDEX_OID_U_LO);
   if (rc < 0) {
     s3daemon.delete_pidfile();
@@ -975,9 +978,9 @@ int main(int argc, char **argv) {
     s3_log(S3_LOG_FATAL, "", "Failed to create a bucket metadata KVS index\n");
   }
 
-  // global_probable_dead_object_list_index_oid - will have stale object oid
+  // global_probable_dead_object_list_index_layout - will have stale object oid
   // information
-  rc = create_global_index(global_probable_dead_object_list_index_oid,
+  rc = create_global_index(global_probable_dead_object_list_index_layout,
                            OBJECT_PROBABLE_DEAD_OID_LIST_INDEX_OID_U_LO);
   if (rc < 0) {
     s3daemon.delete_pidfile();
@@ -987,9 +990,9 @@ int main(int argc, char **argv) {
     s3_log(S3_LOG_FATAL, "", "Failed to global object leak list KVS index\n");
   }
 
-  // global_instance_list_index - will hold s3server fid as key,
+  // global_instance_list_index_layout - will hold s3server fid as key,
   // instance id as value.
-  rc = create_global_index(global_instance_list_index,
+  rc = create_global_index(global_instance_list_index_layout,
                            GLOBAL_INSTANCE_INDEX_U_LO);
   if (rc < 0) {
     s3daemon.delete_pidfile();
@@ -1030,7 +1033,7 @@ int main(int argc, char **argv) {
           mote_kv_writer_factory->create_sync_motr_kvs_writer("", s3_motr_api);
     }
 
-    rc = motr_kv_writer->put_keyval_sync(global_instance_list_index,
+    rc = motr_kv_writer->put_keyval_sync(global_instance_list_index_layout,
                                          s3server_instance_id);
     if (rc != 0) {
       s3daemon.delete_pidfile();

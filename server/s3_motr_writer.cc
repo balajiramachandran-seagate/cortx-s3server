@@ -840,6 +840,9 @@ void S3MotrWiter::set_up_motr_data_buffers(struct s3_motr_rw_op_context *rw_ctx,
     place_holder_for_last_unit =
         (void *)S3MempoolManager::get_instance()->get_buffer_for_unit_size(
             unit_size_for_place_holder);
+    rw_ctx->pi_bufvec->ov_buf[0] = place_holder_for_last_unit;
+    rw_ctx->pi_bufvec->ov_vec.v_count[0] = size_of_each_buf;
+    rw_ctx->pi_bufvec->ov_vec.v_nr = 1;
   }
 
   while (buf_idx < motr_buf_count) {
@@ -868,9 +871,7 @@ void S3MotrWiter::set_up_motr_data_buffers(struct s3_motr_rw_op_context *rw_ctx,
 
     ++buf_idx;
   }
-
   assert(buf_idx == motr_buf_count);
-
   // Seed, Finalize after padding (In case of un aligned data)
   if ((is_s3_write_di_check_enabled) && !calculated_chksum_at_unit_boundary) {
     struct m0_pi_seed seed;

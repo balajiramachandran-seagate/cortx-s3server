@@ -23,6 +23,7 @@
 #include "s3_md5_hash.h"
 #include "s3_option.h"
 
+MD5hash::MD5hash(bool call_init) { Reset(call_init); }
 MD5hash::MD5hash() { Reset(); }
 
 void MD5hash::save_motr_unit_checksum(unsigned char *current_digest) {
@@ -63,9 +64,16 @@ int MD5hash::Finalize() {
   return 0;
 }
 
+void MD5hash::Reset(bool call_init) {
+  if (call_init) {
+    status = MD5_Init(&md5ctx);
+  }
+  is_finalized = false;
+}
+
 void MD5hash::Reset() {
   if (!S3Option::get_instance()->is_s3_write_di_check_enabled()) {
-  status = MD5_Init(&md5ctx);
+    status = MD5_Init(&md5ctx);
   }
   is_finalized = false;
 }

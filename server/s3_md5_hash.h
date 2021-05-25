@@ -35,12 +35,14 @@ class MD5hash {
 
  public:
   MD5hash();
+  MD5hash(bool call_init);
   int Update(const char *input, size_t length);
   void save_motr_unit_checksum(unsigned char *curr_digest);
   void save_unaligned_running_checksum(unsigned char *curr_digest);
   void *get_prev_unit_checksum();
   int Finalize();
   void Reset();
+  void Reset(bool call_init);
 
   std::string get_md5_string();
   std::string get_md5_base64enc_string();

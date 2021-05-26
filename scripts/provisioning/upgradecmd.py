@@ -46,5 +46,6 @@ class UpgradeCmd(SetupCmd):
     merge_configs()
     self.logger.info("merge configs completed")
 
+
     # Validating config files after upgrade
     self.validate_config_files(self.name)

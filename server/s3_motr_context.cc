@@ -162,6 +162,16 @@ int free_basic_op_ctx(struct s3_motr_op_context *ctx) {
   return 0;
 }
 
+unsigned long get_sizeof_pi_info(struct s3_motr_rw_op_context *ctx) {
+  switch (ctx->pi.hdr.pi_type) {
+    case M0_PI_TYPE_MD5_INC_DIGEST:
+      return sizeof(m0_md5_inc_digest_pi);
+    default:
+      s3_log(S3_LOG_ERROR, "", "%s Invalid PI Type\n", __func__);
+      return 0;
+  }
+}
+
 // To create a motr RW operation
 // default allocate_bufs = true -> allocate memory for each buffer
 struct s3_motr_rw_op_context *create_basic_rw_op_ctx(
@@ -174,7 +184,7 @@ struct s3_motr_rw_op_context *create_basic_rw_op_ctx(
       1, sizeof(struct s3_motr_rw_op_context));
 
   // TODO - Need to take from config file
-  ctx->pi.hdr.pi_type = M0_PI_TYPE_MD5_INC_DIGEST;
+  ctx->pi.hdr.pi_type = S3Option::get_instance()->get_pi_type();
 
   ctx->unit_size = unit_size;
   ctx->ext = (struct m0_indexvec *)calloc(1, sizeof(struct m0_indexvec));
@@ -218,7 +228,8 @@ struct s3_motr_rw_op_context *create_basic_rw_op_ctx(
       return NULL;
     }
     rc = m0_bufvec_alloc(ctx->attr, motr_checksums_buf_count,
-                         sizeof(m0_md5_inc_digest_pi));
+                         get_sizeof_pi_info(ctx));
+
   } else {
     rc = m0_bufvec_alloc(ctx->attr, motr_buf_count, 1);
   }
